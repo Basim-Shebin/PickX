@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Matching Jobs</title>
+</head>
+<body>
+    <h2>Jobs for {{ skill }}</h2>
+
+    {% if jobs %}
+        <ul>
+        {% for job in jobs %}
+            <li>
+                <b>{{ job.skill_required }}</b><br>
+                {{ job.description }}<br>
+                Location: {{ job.location }}<br><br>
+
+                <a href="/worker/job/accept/{{ job.job_id }}">
+                    Accept Job
+                </a>
+
+                <br><br>
+            </li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No matching jobs available.</p>
+    {% endif %}
+</body>
+</html>
