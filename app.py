@@ -135,10 +135,19 @@ def dashboard():
             flash('Please update your skills in Profile to see matching jobs!', 'info')
             
         if search_query:
-            all_open_jobs = execute_query(
-                "SELECT * FROM jobs WHERE status = 'open' AND (title LIKE %s OR skill_required LIKE %s OR location_city LIKE %s OR location_area LIKE %s)",
-                (f'%{search_query}%', f'%{search_query}%', f'%{search_query}%', f'%{search_query}%')
-            )
+            # Get semantic variants for the query
+            variants = get_semantic_skills(search_query)
+            
+            # Construct query with multiple OR conditions for semantic matching
+            or_clauses = ["title LIKE %s", "location_city LIKE %s", "location_area LIKE %s"]
+            params = [f'%{search_query}%', f'%{search_query}%', f'%{search_query}%']
+            
+            for variant in variants:
+                or_clauses.append("skill_required LIKE %s")
+                params.append(f'%{variant}%')
+                
+            query = f"SELECT * FROM jobs WHERE status = 'open' AND ({' OR '.join(or_clauses)})"
+            all_open_jobs = execute_query(query, tuple(params))
         else:
             all_open_jobs = execute_query("SELECT * FROM jobs WHERE status = 'open'")
 
@@ -151,9 +160,11 @@ def dashboard():
                 if search_query or score > 0:
                     job['score'] = score
                     recommended_jobs.append(job)
-            recommended_jobs = sorted(recommended_jobs, key=lambda x: x.get('score', 0), reverse=True)
+        recommended_jobs = sorted(recommended_jobs, key=lambda x: x.get('score', 0), reverse=True)
         
-        return render_template('worker_dashboard.html', profile=profile, recommended_jobs=recommended_jobs, search_query=search_query)
+        portfolio = execute_query("SELECT * FROM worker_portfolio WHERE worker_id = %s", (current_user.id,))
+        
+        return render_template('worker_dashboard.html', profile=profile, recommended_jobs=recommended_jobs, search_query=search_query, portfolio=portfolio)
     else:
         return redirect(url_for('admin_dashboard'))
 
@@ -194,12 +205,12 @@ def worker_profile():
             # Update current_user object for immediate UI refresh
             current_user.profile_image = new_profile_img
 
-        # Handle Portfolio Images
-        portfolio_files = request.files.getlist('portfolio_images')
-        for p_file in portfolio_files:
-            p_path = save_upload(p_file, 'portfolios')
-            if p_path:
-                execute_query("INSERT INTO worker_portfolio (worker_id, image_path) VALUES (%s, %s)", (current_user.id, p_path), commit=True)
+        # Handle Portfolio Images/Videos - MOVED TO DEDICATED POSTS SECTION
+        # portfolio_files = request.files.getlist('portfolio_images')
+        # for p_file in portfolio_files:
+        #     p_path = save_upload(p_file, 'portfolios')
+        #     if p_path:
+        #         execute_query("INSERT INTO worker_portfolio (worker_id, image_path) VALUES (%s, %s)", (current_user.id, p_path), commit=True)
 
         execute_query(
             "UPDATE worker_profiles SET bio=%s, daily_wage=%s, experience_years=%s, availability_status=%s, skills=%s WHERE worker_id=%s",
@@ -211,6 +222,53 @@ def worker_profile():
 
     profile = execute_query("SELECT * FROM worker_profiles WHERE worker_id = %s", (current_user.id,))
     return render_template('worker_profile.html', profile=profile[0] if profile else None, categories=JOB_CATEGORIES)
+
+@app.route('/worker/posts', methods=['GET', 'POST'])
+@login_required
+def manage_posts():
+    if current_user.role != 'worker':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        caption = request.form.get('caption')
+        post_file = request.files.get('post_image')
+        
+        if post_file:
+            from utils import save_upload
+            p_path = save_upload(post_file, 'portfolios')
+            if p_path:
+                execute_query(
+                    "INSERT INTO worker_portfolio (worker_id, image_path, caption) VALUES (%s, %s, %s)",
+                    (current_user.id, p_path, caption),
+                    commit=True
+                )
+                flash('Work picture posted successfully!', 'success')
+            else:
+                flash('Error uploading image', 'danger')
+        else:
+            flash('Please select an image to post', 'warning')
+        return redirect(url_for('manage_posts'))
+
+    posts = execute_query("SELECT * FROM worker_portfolio WHERE worker_id = %s ORDER BY created_at DESC", (current_user.id,))
+    return render_template('worker_posts.html', posts=posts)
+
+@app.route('/worker/post/delete/<int:post_id>')
+@login_required
+def delete_post(post_id):
+    if current_user.role != 'worker':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Check ownership
+    post = execute_query("SELECT * FROM worker_portfolio WHERE post_id = %s AND worker_id = %s", (post_id, current_user.id))
+    if post:
+        execute_query("DELETE FROM worker_portfolio WHERE post_id = %s", (post_id,), commit=True)
+        flash('Post deleted successfully', 'success')
+    else:
+        flash('Post not found or unauthorized', 'danger')
+    
+    return redirect(url_for('manage_posts'))
 
 @app.route('/provider/post-job', methods=['GET', 'POST'])
 @login_required
@@ -238,3 +296,170 @@ def post_job():
         return redirect(url_for('dashboard'))
     
     return render_template('post_job.html', categories=JOB_CATEGORIES)
+
+from utils import save_upload, export_jobs_to_csv, create_notification, get_semantic_skills
+
+@app.route('/provider/search-workers')
+@login_required
+def search_workers():
+    if current_user.role != 'provider':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    job_id = request.args.get('job_id')
+    search_query = request.args.get('q', '').strip()
+    
+    # If job_id is provided, we can pre-fill search with the job's required skill
+    if job_id and not search_query:
+        job = execute_query("SELECT skill_required FROM jobs WHERE job_id = %s", (job_id,))
+        if job:
+            search_query = job[0]['skill_required']
+    
+    if search_query:
+        # Get semantic variants for the query
+        variants = get_semantic_skills(search_query)
+        
+        # Construct query with multiple OR conditions for semantic matching
+        where_clauses = ["u.role = 'worker'"]
+        or_clauses = ["u.full_name LIKE %s", "u.city LIKE %s"]
+        params = [f'%{search_query}%', f'%{search_query}%']
+        
+        for variant in variants:
+            or_clauses.append("wp.skills LIKE %s")
+            params.append(f'%{variant}%')
+            
+        where_clauses.append(f"({' OR '.join(or_clauses)})")
+        
+        query = (
+            "SELECT u.*, wp.* FROM users u "
+            "JOIN worker_profiles wp ON u.user_id = wp.worker_id "
+            f"WHERE {' AND '.join(where_clauses)}"
+        )
+        workers = execute_query(query, tuple(params))
+    else:
+        # Show top rated workers by default
+        workers = execute_query(
+            "SELECT u.*, wp.* FROM users u "
+            "JOIN worker_profiles wp ON u.user_id = wp.worker_id "
+            "WHERE u.role = 'worker' ORDER BY wp.avg_rating DESC LIMIT 10"
+        )
+        
+    return render_template('search_workers.html', workers=workers, search_query=search_query, job_id=job_id)
+
+@app.route('/worker/profile/<int:worker_id>')
+@login_required
+def worker_profile_public(worker_id):
+    worker = execute_query("SELECT u.*, wp.* FROM users u JOIN worker_profiles wp ON u.user_id = wp.worker_id WHERE u.user_id = %s", (worker_id,))
+    if not worker:
+        flash('Worker not found', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    portfolio = execute_query("SELECT * FROM worker_portfolio WHERE worker_id = %s", (worker_id,))
+    return render_template('worker_profile_public.html', worker=worker[0], portfolio=portfolio)
+
+@app.route('/worker/apply/<int:job_id>')
+@login_required
+def apply_job(job_id):
+    if current_user.role != 'worker':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Check if already applied
+    existing = execute_query(
+        "SELECT * FROM bookings WHERE job_id=%s AND worker_id=%s",
+        (job_id, current_user.id)
+    )
+    if existing:
+        flash('You have already applied for this job', 'warning')
+        return redirect(url_for('dashboard'))
+
+    job = execute_query("SELECT provider_id, title FROM jobs WHERE job_id = %s", (job_id,))
+    if not job:
+        flash('Job not found', 'danger')
+        return redirect(url_for('dashboard'))
+
+    execute_query(
+        "INSERT INTO bookings (job_id, worker_id, provider_id) VALUES (%s, %s, %s)",
+        (job_id, current_user.id, job[0]['provider_id']),
+        commit=True
+    )
+    
+    # Notify provider
+    create_notification(job[0]['provider_id'], f"New applicant for your job: {job[0]['title']}")
+        
+    flash('Application sent successfully!', 'success')
+    return redirect(url_for('dashboard'))
+
+@app.route('/provider/job/<int:job_id>/applicants')
+@login_required
+def view_applicants(job_id):
+    if current_user.role != 'provider':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    applicants = execute_query(
+        "SELECT b.booking_id, u.user_id, u.full_name, u.profile_image, wp.avg_rating, wp.daily_wage, b.status "
+        "FROM bookings b "
+        "JOIN users u ON b.worker_id = u.user_id "
+        "JOIN worker_profiles wp ON u.user_id = wp.worker_id "
+        "WHERE b.job_id = %s",
+        (job_id,)
+    )
+    return render_template('view_applicants.html', applicants=applicants, job_id=job_id)
+
+@app.route('/provider/booking/<int:booking_id>/accept')
+@login_required
+def accept_worker(booking_id):
+    if current_user.role != 'provider':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    booking = execute_query("SELECT job_id, worker_id FROM bookings WHERE booking_id = %s", (booking_id,))
+    if booking:
+        # Accept this booking
+        execute_query("UPDATE bookings SET status='confirmed' WHERE booking_id=%s", (booking_id,), commit=True)
+        # Reject others for the same job
+        execute_query("UPDATE bookings SET status='cancelled' WHERE job_id=%s AND booking_id!=%s", (booking[0]['job_id'], booking_id), commit=True)
+        # Update job status
+        execute_query("UPDATE jobs SET status='booked' WHERE job_id=%s", (booking[0]['job_id'],), commit=True)
+        
+        create_notification(booking[0]['worker_id'], "Your booking request has been confirmed!")
+        flash('Worker assigned to job!', 'success')
+    return redirect(url_for('dashboard'))
+
+@app.route('/submit-review/<int:booking_id>', methods=['POST'])
+@login_required
+def submit_review(booking_id):
+    score = request.form['score']
+    review_text = request.form['review_text']
+    
+    booking = execute_query("SELECT * FROM bookings WHERE booking_id = %s", (booking_id,))
+    if booking:
+        job_id = booking[0]['job_id']
+        worker_id = booking[0]['worker_id']
+        provider_id = current_user.id
+        
+        execute_query(
+            "INSERT INTO ratings (booking_id, provider_id, worker_id, score, review_text) VALUES (%s, %s, %s, %s, %s)",
+            (booking_id, provider_id, worker_id, score, review_text),
+            commit=True
+        )
+        
+        # Update worker rating and jobs completed
+        avg_data = execute_query(
+            "SELECT AVG(score) as avg_s, COUNT(*) as total FROM ratings WHERE worker_id = %s",
+            (worker_id,)
+        )
+        execute_query(
+            "UPDATE worker_profiles SET avg_rating=%s, total_jobs=%s WHERE worker_id=%s",
+            (avg_data[0]['avg_s'], avg_data[0]['total'], worker_id),
+            commit=True
+        )
+        
+        # Mark job and booking as completed
+        execute_query("UPDATE jobs SET status='completed' WHERE job_id=%s", (job_id,), commit=True)
+        execute_query("UPDATE bookings SET status='completed', completed_at=CURRENT_TIMESTAMP WHERE booking_id=%s", (booking_id,), commit=True)
+        
+        flash('Review submitted and job completed!', 'success')
+        
+    return redirect(url_for('dashboard'))
