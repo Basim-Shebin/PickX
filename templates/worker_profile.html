@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <aside class="sidebar">
+        <div class="card glass">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.1rem;"><i class="fas fa-user-circle mr-2"></i> Worker Menu
+            </h3>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem;">
+                <li><a href="{{ url_for('dashboard') }}" class="link-custom"><i class="fas fa-home mr-2"></i>
+                        Dashboard</a></li>
+                <li><a href="{{ url_for('worker_profile') }}" class="link-custom" style="color: var(--primary-color)"><i
+                            class="fas fa-id-card mr-2"></i> My Profile</a></li>
+                <li><a href="{{ url_for('manage_posts') }}" class="link-custom"><i class="fas fa-images mr-2"></i>
+                        My Posts</a></li>
+            </ul>
+        </div>
+    </aside>
+
+    <section class="main-content">
+        <h2 class="text-gradient" style="margin-bottom: 2rem;">Manage My Profile</h2>
+        <div class="card glass" style="padding: 2.5rem;">
+            <form action="{{ url_for('worker_profile') }}" method="POST" enctype="multipart/form-data">
+                <div
+                    style="display: flex; gap: 2rem; align-items: center; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--glass-border);">
+                    <img src="{{ current_user.profile_image }}" alt="Profile"
+                        style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid var(--primary-color);">
+                    <div class="form-group" style="flex: 1;">
+                        <label for="profile_image">Change Profile Picture</label>
+                        <input type="file" id="profile_image" name="profile_image" class="form-control"
+                            accept="image/*">
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="daily_wage">Expected Daily Wage (₹)</label>
+                        <input type="number" id="daily_wage" name="daily_wage" class="form-control"
+                            value="{{ profile.daily_wage }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="experience_years">Years of Experience</label>
+                        <input type="number" id="experience_years" name="experience_years" class="form-control"
+                            value="{{ profile.experience_years }}" required>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label for="availability_status">Current Availability</label>
+                        <select name="availability_status" id="availability_status" class="form-control">
+                            <option value="available" {% if profile.availability_status=='available' %}selected{% endif
+                                %}>🟢 Available for work</option>
+                            <option value="busy" {% if profile.availability_status=='busy' %}selected{% endif %}>🟡
+                                Currently Busy</option>
+                            <option value="unavailable" {% if profile.availability_status=='unavailable' %}selected{%
+                                endif %}>🔴 Not Available</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label>My Skills / Categories (Select all that apply)</label>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                        {% set current_skills = profile.skills.split(',') if profile.skills else [] %}
+                        {% for cat in categories %}
+                        <label
+                            style="display: flex; align-items: center; gap: 0.8rem; font-size: 0.9rem; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: 0.2s;"
+                            onmouseover="this.style.background='rgba(255,255,255,0.05)'"
+                            onmouseout="this.style.background='transparent'">
+                            <input type="checkbox" name="skills" value="{{ cat }}" {% if cat in current_skills
+                                %}checked{% endif %}>
+                            {{ cat }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 1.5rem;">
+                    <label for="bio">Professional Bio / Service Details</label>
+                    <textarea id="bio" name="bio" class="form-control" rows="6"
+                        placeholder="Tell customers about your skills and experience...">{{ profile.bio or '' }}</textarea>
+                </div>
+
+                <div class="card glass"
+                    style="margin-top: 1.5rem; border: 1px dashed var(--primary-color); text-align: center; padding: 2rem;">
+                    <h5 style="margin-bottom: 0.5rem;"><i class="fas fa-images mr-2"></i> Showcase Your Work</h5>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Share photos of
+                        your past projects to attract more customers!</p>
+                    <a href="{{ url_for('manage_posts') }}" class="btn btn-primary btn-glow"
+                        style="padding: 0.6rem 2rem; font-size: 0.85rem;">Manage Work Posts</a>
+                </div>
+
+                <div style="text-align: right; margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary btn-glow" style="padding: 1rem 3rem;">Save Profile
+                        Changes</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card glass" style="margin-top: 2rem; border-color: rgba(16, 185, 129, 0.2);">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h4>Profile Statistics</h4>
+                    <p style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem;">Your performance
+                        overview</p>
+                </div>
+                <div style="display: flex; gap: 2rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 800; color: #fbbf24;">{{ profile.avg_rating }}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-secondary);">RATING</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">{{
+                            profile.total_jobs }}</div>
+                        <div style="font-size: 0.7rem; color: var(--text-secondary);">JOBS DONE</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

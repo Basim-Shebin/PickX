@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero" style="padding: 6rem 0;">
+    <h1 style="font-size: 4rem; font-weight: 800; color: var(--text-primary); line-height: 1.1; margin-bottom: 2rem;">
+        Connect with Reliable <br>
+        <span style="color: var(--primary-color);">Daily Wage Workers</span>
+    </h1>
+    <p style="color: var(--text-primary); font-size: 1.2rem; max-width: 700px; margin: 0 auto; font-weight: 500;">
+        PickX is a smart platform that connects skilled workers with customers for
+        on-demand home services. Efficient, transparent, and fair.</p>
+    <div style="display: flex; gap: 1.5rem; justify-content: center; margin-top: 3rem;">
+        <a href="{{ url_for('register') }}" class="btn btn-primary btn-glow"
+            style="padding: 1rem 3rem; font-size: 1.1rem;">Find a Worker</a>
+        <a href="{{ url_for('register') }}" class="btn btn-outline" style="padding: 1rem 3rem; font-size: 1.1rem;">Be a
+            Worker</a>
+    </div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5rem; margin-top: 4rem;">
+    <div class="card glass" style="background: var(--bg-card); padding: 2.5rem;">
+        <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1.5rem;">
+            <i class="fas fa-brain"></i>
+        </div>
+        <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 700;">Smart Matching</h3>
+        <p style="color: var(--text-primary); font-size: 0.95rem;">Our rule-based and ML algorithms find the best
+            workers based on skills, location, and ratings.</p>
+    </div>
+    <div class="card glass" style="background: var(--bg-card); padding: 2.5rem;">
+        <div style="font-size: 2.5rem; color: #00bbe4; margin-bottom: 1.5rem;">
+            <i class="fas fa-shield-alt"></i>
+        </div>
+        <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 700;">Transparent Pricing</h3>
+        <p style="color: var(--text-primary); font-size: 0.95rem;">View base rates and ratings before booking. No
+            hidden intermediaries or extra costs.</p>
+    </div>
+    <div class="card glass" style="background: var(--bg-card); padding: 2.5rem;">
+        <div style="font-size: 2.5rem; color: var(--primary-color); margin-bottom: 1.5rem;">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        <h3 style="margin-bottom: 1rem; color: var(--text-primary); font-weight: 700;">Easy Booking</h3>
+        <p style="color: var(--text-primary); font-size: 0.95rem;">Post a job and get responses instantly. Manage your
+            bookings and payments in one place.</p>
+    </div>
+</section>
+{% endblock %}

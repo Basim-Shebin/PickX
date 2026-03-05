@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 5rem auto;">
+    <div class="card glass" style="padding: 3rem; text-align: center;">
+        <h2 class="text-gradient" style="margin-bottom: 1rem;">Finalize Booking</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 2rem;">Secure payment for <strong>{{ booking.title
+                }}</strong></p>
+
+        <div
+            style="background: rgba(255,255,255,0.03); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--glass-border);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <span style="color: var(--text-secondary);">Service Fee</span>
+                <span>₹500.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <span style="color: var(--text-secondary);">Platform Fee</span>
+                <span>₹50.00</span>
+            </div>
+            <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 1rem 0;">
+            <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 1.2rem;">
+                <span>Total Amount</span>
+                <span style="color: var(--accent-vibrant);">₹550.00</span>
+            </div>
+        </div>
+
+        <form action="{{ url_for('payment', booking_id=booking.booking_id) }}" method="POST">
+            <button type="submit" class="btn btn-primary btn-glow"
+                style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+                <i class="fas fa-lock mr-2" style="margin-right: 8px;"></i> Pay & Confirm Now
+            </button>
+        </form>
+        <a href="{{ url_for('dashboard') }}" class="link-custom"
+            style="display: block; margin-top: 1.5rem; font-size: 0.9rem;">Cancel and Return</a>
+    </div>
+</div>
+{% endblock %}

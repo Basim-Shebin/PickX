@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<style>
+    #map {
+        height: 350px;
+        border-radius: 12px;
+        margin-top: 1rem;
+        border: 1px solid var(--glass-border);
+    }
+
+    /* Style the Search Input */
+    .leaflet-control-geocoder {
+        background: white !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+    }
+
+    .leaflet-control-geocoder-icon {
+        background-color: transparent;
+        /* Fix empty ruleset */
+    }
+
+    .leaflet-control-geocoder-form input {
+        color: black !important;
+        background: transparent !important;
+    }
+</style>
+<div class="dashboard-grid">
+    <aside class="sidebar">
+        <div class="card glass" style="background: var(--bg-card);">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;"><i
+                    class="fas fa-bars mr-2"></i> Provider Menu</h3>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem;">
+                <li><a href="{{ url_for('dashboard') }}" class="link-custom" style="color: var(--text-primary);"><i
+                            class="fas fa-home mr-2" style="color: var(--primary-color);"></i>
+                        Dashboard</a></li>
+                <li><a href="#" class="link-custom" style="color: var(--primary-color); font-weight: 700;"><i
+                            class="fas fa-plus mr-2"></i>
+                        Post New Job</a></li>
+            </ul>
+        </div>
+    </aside>
+
+    <section class="main-content">
+        <h2 style="margin-bottom: 2rem; color: var(--text-primary); font-weight: 800; font-size: 2.2rem;">Post a New
+            Requirement</h2>
+        <div class="card glass" style="padding: 2.5rem; background: var(--bg-card);">
+            <form action="{{ url_for('post_job') }}" method="POST">
+                <div class="form-group">
+                    <label for="title">Job Title</label>
+                    <input type="text" id="title" name="title" class="form-control"
+                        placeholder="e.g. Electrician needed for wiring repair" required>
+                </div>
+
+                <div class="form-grid" style="margin-top: 1.5rem;">
+                    <div class="form-group">
+                        <label for="skill_required">Category of Work</label>
+                        <select name="skill_required" id="skill_required" class="form-control" required>
+                            <option value="" disabled selected>Select a category</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="job_date">Preferred Date</label>
+                        <input type="date" id="job_date" name="job_date" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location_city">City</label>
+                        <input type="text" id="location_city" name="location_city" class="form-control"
+                            placeholder="Mumbai" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location_area">Area / Locality</label>
+                        <input type="text" id="location_area" name="location_area" class="form-control"
+                            placeholder="Andheri East" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="duration_hours">Estimated Duration (Hours)</label>
+                        <input type="number" id="duration_hours" name="duration_hours" class="form-control"
+                            placeholder="4" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="budget">Your Budget (₹) (Optional)</label>
+                        <input type="number" id="budget" name="budget" class="form-control" placeholder="600">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 2rem;">
+                    <label style="color: var(--text-primary); font-weight: 700;"><i class="fas fa-map-marker-alt mr-2"
+                            style="color: var(--primary-color);"></i> Pin Exact Location on Map</label>
+                    <p style="font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.5rem; font-weight: 500;">
+                        Click on the
+                        map
+                        to mark the exact work site. Workers can navigate here.</p>
+                    <div id="map"></div>
+                    <input type="hidden" name="latitude" id="latitude">
+                    <input type="hidden" name="longitude" id="longitude">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 3rem;">
+                    <button type="submit" class="btn btn-primary btn-glow" style="flex: 2; padding: 1rem;">Publish Job
+                        Posting</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline"
+                        style="flex: 1; padding: 1rem;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize map (Mumbai default)
+        var map = L.map('map').setView([19.0760, 72.8777], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        var marker;
+
+        // Add Search Control
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false
+        })
+            .on('markgeocode', function (e) {
+                var bbox = e.geocode.bbox;
+                var poly = L.polygon([
+                    bbox.getSouthEast(),
+                    bbox.getNorthEast(),
+                    bbox.getNorthWest(),
+                    bbox.getSouthWest()
+                ]);
+                map.fitBounds(poly.getBounds());
+
+                var latlng = e.geocode.center;
+                if (marker) {
+                    marker.setLatLng(latlng);
+                } else {
+                    marker = L.marker(latlng, { draggable: true }).addTo(map);
+                }
+                document.getElementById('latitude').value = latlng.lat;
+                document.getElementById('longitude').value = latlng.lng;
+            })
+            .addTo(map);
+
+        map.on('click', function (e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+            }
+
+            document.getElementById('latitude').value = lat;
+            document.getElementById('longitude').value = lng;
+        });
+
+        // Use Geolocation if available
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
+                map.setView([position.coords.latitude, position.coords.longitude], 15);
+            });
+        }
+
+        // Fix layout issues
+        setTimeout(function () {
+            map.invalidateSize();
+        }, 500);
+    });
+</script>
+{% endblock %}

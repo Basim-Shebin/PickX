@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <aside class="sidebar">
+        <div class="card glass" style="background: var(--bg-card);">
+            <h3 style="margin-bottom: 1.5rem; font-size: 1.1rem; color: var(--text-primary); font-weight: 700;"><i
+                    class="fas fa-bars mr-2"></i> Menu</h3>
+            <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.8rem;">
+                <li><a href="{{ url_for('dashboard') }}" class="link-custom" style="color: var(--text-primary);"><i
+                            class="fas fa-home mr-2" style="color: var(--primary-color);"></i>
+                        Dashboard</a></li>
+                {% if job_id %}
+                <li><a href="{{ url_for('view_applicants', job_id=job_id) }}" class="link-custom"
+                        style="color: var(--text-primary);"><i class="fas fa-users mr-2"
+                            style="color: var(--primary-color);"></i> Back
+                        to Applicants</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </aside>
+
+    <section class="main-content">
+        <div
+            style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1.5rem;">
+            <div style="display: flex; flex-direction: column;">
+                <h2 style="margin-bottom: 0.5rem; color: var(--text-primary); font-weight: 800; font-size: 2.2rem;">
+                    Search for
+                    Professionals</h2>
+                <p style="color: var(--text-primary); font-weight: 500;">{% if search_query %}Showing results for "{{
+                    search_query
+                    }}"{%
+                    else %}Find the perfect worker by name or job category{% endif %}</p>
+            </div>
+
+            <form action="{{ url_for('search_workers') }}" method="GET"
+                style="display: flex; gap: 0.8rem; flex: 1; max-width: 600px;">
+                {% if job_id %}
+                <input type="hidden" name="job_id" value="{{ job_id }}">
+                {% endif %}
+                <div style="position: relative; flex: 1;">
+                    <i class="fas fa-search"
+                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #666;"></i>
+                    <input type="text" name="q" value="{{ search_query }}"
+                        placeholder="Type a name or job (e.g. 'Electrician')..."
+                        style="width: 100%; padding: 1rem 1rem 1rem 3rem; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-primary); font-size: 1rem;">
+                </div>
+                <button type="submit" class="btn btn-primary btn-glow" style="padding: 0 2rem;">Search</button>
+            </form>
+        </div>
+
+        <div style="display: grid; gap: 1.5rem;">
+            {% if workers %}
+            {% for worker in workers %}
+            <div class="card glass"
+                style="display: flex; justify-content: space-between; align-items: center; padding: 2rem; background: var(--bg-card);">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div
+                        style="width: 80px; height: 80px; border-radius: 50%; overflow: hidden; border: 3px solid var(--primary-color);">
+                        <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
+                            style="width: 100%; height: 100%; object-fit: cover;">
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom: 0.3rem; font-size: 1.3rem; color: var(--text-primary);">{{
+                            worker.full_name }}</h3>
+                        <p
+                            style="color: var(--primary-color); font-weight: 700; margin-bottom: 0.5rem; font-size: 0.95rem;">
+                            {{ worker.skills.replace(',', ' • ') if worker.skills else 'Daily Wage Worker' }}
+                        </p>
+                        <div
+                            style="display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--text-primary); align-items: center; font-weight: 500;">
+                            <span><i class="fas fa-star" style="color: #fbbf24; margin-right: 4px;"></i> {{
+                                worker.avg_rating }}</span>
+                            <span><i class="fas fa-map-marker-alt"
+                                    style="color: var(--primary-color); margin-right: 4px;"></i> {{ worker.city
+                                }}</span>
+                            <span><i class="fas fa-money-bill-wave" style="color: #10b981; margin-right: 4px;"></i> ₹{{
+                                worker.daily_wage }}/day</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <a href="{{ url_for('worker_profile_public', worker_id=worker.user_id) }}" class="btn btn-outline"
+                        style="padding: 0.7rem 1.5rem;">View Profile</a>
+                    <button class="btn btn-primary btn-glow" style="padding: 0.7rem 1.5rem;"><i
+                            class="fas fa-bolt mr-2"></i> Hire Now</button>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="card glass"
+                style="text-align: center; padding: 5rem 2rem; border-style: dashed; background: transparent;">
+                <i class="fas fa-user-slash"
+                    style="font-size: 3rem; color: var(--glass-border); margin-bottom: 1.5rem;"></i>
+                <h3 style="color: var(--text-primary);">No workers found matching your search</h3>
+                <p style="color: var(--text-primary); margin-top: 0.5rem; font-weight: 500;">Try searching for different
+                    skills or a
+                    different city.</p>
+                <a href="{{ url_for('search_workers') }}" class="btn btn-outline" style="margin-top: 1.5rem;">Clear
+                    Filters</a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}

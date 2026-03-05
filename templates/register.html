@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-card glass" style="background: var(--bg-card); max-width: 600px;">
+    <h2
+        style="margin-bottom: 2rem; text-align: center; font-size: 2.2rem; color: var(--text-primary); font-weight: 800;">
+        Create
+        Account</h2>
+    <form action="{{ url_for('register') }}" method="POST" enctype="multipart/form-data">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input type="text" id="full_name" name="full_name" class="form-control" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="john@example.com"
+                    required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Min 8 chars"
+                    required minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" class="form-control" placeholder="+91 12345 67890" required>
+            </div>
+            <div class="form-group">
+                <label for="city">City</label>
+                <input type="text" id="city" name="city" class="form-control" placeholder="e.g. Mumbai" required>
+            </div>
+            <div class="form-group">
+                <label for="area">Area (Optional)</label>
+                <input type="text" id="area" name="area" class="form-control" placeholder="e.g. Bandra">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label for="profile_image">Profile Picture (Optional)</label>
+                <input type="file" id="profile_image" name="profile_image" class="form-control" accept="image/*"
+                    style="padding: 0.5rem;">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+                <label for="role">Register As</label>
+                <select name="role" id="role" class="form-control" onchange="toggleWorkerFields()" required>
+                    <option value="provider">Job Provider (I want to hire)</option>
+                    <option value="worker">Wage Worker (I want to work)</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="worker-fields"
+            style="display: none; border-top: 1px solid var(--glass-border); padding-top: 1.5rem; margin-top: 1rem;">
+            <p style="color: var(--primary-color); font-weight: 700; margin-bottom: 1rem; font-size: 0.95rem;">Worker
+                Specific Details</p>
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>What kind of jobs can you do? (Select all that apply)</label>
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; margin-top: 0.5rem; background: var(--bg-main); padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);">
+                        {% for cat in categories %}
+                        <label
+                            style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; color: var(--text-primary); font-weight: 500;">
+                            <input type="checkbox" name="skills" value="{{ cat }}"> {{ cat }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="daily_wage">Expected Daily Wage (₹)</label>
+                    <input type="number" id="daily_wage" name="daily_wage" class="form-control" placeholder="e.g. 500">
+                </div>
+                <div class="form-group">
+                    <label for="experience_years">Years of Experience</label>
+                    <input type="number" id="experience_years" name="experience_years" class="form-control"
+                        placeholder="e.g. 3">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-glow"
+            style="width: 100%; margin-top: 2rem; padding: 1rem;">Start Your Journey</button>
+    </form>
+    <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">
+        Already have an account? <a href="{{ url_for('login') }}" class="link-custom" style="font-weight: 700;">Sign
+            In</a>
+    </p>
+</div>
+
+<script>
+    function toggleWorkerFields() {
+        const role = document.getElementById('role').value;
+        const workerFields = document.getElementById('worker-fields');
+        workerFields.style.display = role === 'worker' ? 'block' : 'none';
+
+        const wage = document.getElementById('daily_wage');
+        const exp = document.getElementById('experience_years');
+        if (role === 'worker') {
+            wage.required = true;
+            exp.required = true;
+        } else {
+            wage.required = false;
+            exp.required = false;
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-card glass" style="max-width: 450px; background: var(--bg-card);">
+    <h2
+        style="margin-bottom: 2rem; text-align: center; font-size: 2.2rem; color: var(--text-primary); font-weight: 800;">
+        Welcome Back
+    </h2>
+    <form action="{{ url_for('login') }}" method="POST">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" class="form-control" placeholder="john@example.com" required>
+        </div>
+        <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <label style="margin-bottom: 0;">Password</label>
+                <a href="#" class="link-custom" style="font-size: 0.8rem;">Forgot?</a>
+            </div>
+            <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-glow"
+            style="width: 100%; margin-top: 1rem; padding: 1rem;">Sign In</button>
+    </form>
+    <p style="text-align: center; margin-top: 2rem; font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">
+        Don't have an account? <a href="{{ url_for('register') }}" class="link-custom" style="font-weight: 700;">Join
+            PickX</a>
+    </p>
+</div>
+{% endblock %}

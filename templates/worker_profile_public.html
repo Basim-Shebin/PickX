@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-content" style="max-width: 1100px; margin: 0 auto; padding-top: 2rem;">
+    <!-- Profile Header Section -->
+    <div class="card glass"
+        style="padding: 0; margin-bottom: 3rem; overflow: hidden; border: 1px solid var(--glass-border); background: var(--bg-card);">
+        <div
+            style="height: 180px; background: linear-gradient(135deg, #0099cc, #00bbe4); opacity: 0.1; position: relative;">
+        </div>
+        <div style="padding: 0 3rem 3rem; margin-top: -90px; position: relative;">
+            <div style="display: flex; gap: 3rem; align-items: flex-end; flex-wrap: wrap;">
+                <div style="position: relative;">
+                    <img src="{{ worker.profile_image }}" alt="{{ worker.full_name }}"
+                        style="width: 180px; height: 180px; border-radius: 50%; object-fit: cover; border: 6px solid var(--bg-card); box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+                    {% if worker.availability_status == 'available' %}
+                    <div style="position: absolute; bottom: 15px; right: 15px; width: 30px; height: 30px; background: #10b981; border-radius: 50%; border: 4px solid var(--bg-card); z-index: 10;"
+                        title="Available"></div>
+                    {% endif %}
+                </div>
+
+                <div style="flex: 1; min-width: 300px; padding-bottom: 1rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <h1
+                                style="font-size: 2.8rem; margin-bottom: 0.2rem; font-weight: 800; color: var(--text-primary);">
+                                {{
+                                worker.full_name
+                                }}</h1>
+                            <p style="font-size: 1.2rem; color: var(--primary-color); font-weight: 600;">
+                                {{ worker.skills.replace(',', ' • ') if worker.skills else 'Daily Wage Worker' }}
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 1rem;">
+                            <button class="btn btn-primary btn-glow" style="padding: 0.8rem 2rem;"><i
+                                    class="fas fa-paper-plane mr-2"></i> Message</button>
+                            <button class="btn btn-outline" style="padding: 0.8rem 1.5rem;"><i
+                                    class="fas fa-user-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 350px; gap: 2.5rem;">
+        <div class="left-column">
+            <!-- Bio Section -->
+            <div class="card glass" style="padding: 2.5rem; margin-bottom: 2rem;">
+                <h3 style="margin-bottom: 1.5rem; font-size: 1.3rem; color: var(--text-primary);"><i
+                        class="fas fa-info-circle mr-2" style="color: var(--primary-color);"></i> About Me</h3>
+                <div style="line-height: 1.8; color: var(--text-primary); white-space: pre-wrap; font-size: 1.05rem;">
+                    {{ worker.bio or 'This professional has not provided a bio yet.' }}
+                </div>
+            </div>
+
+            <!-- My Works Section (Social Media Feed Style) -->
+            {% if portfolio %}
+            <div class="card glass" style="padding: 2.5rem;">
+                <h3 style="margin-bottom: 2rem; font-size: 1.5rem;"><i class="fas fa-images mr-2"
+                        style="color: var(--primary-color);"></i> My Work Feed</h3>
+                <div style="display: flex; flex-direction: column; gap: 2.5rem;">
+                    {% for item in portfolio %}
+                    <div class="post-card" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 2rem;">
+                        <div
+                            style="margin-bottom: 1rem; position: relative; overflow: hidden; border-radius: 12px; background: #000;">
+                            {% if item.image_path.lower().endswith(('.mp4', '.mov', '.avi', '.mkv')) %}
+                            <video src="/{{ item.image_path }}" style="width: 100%; max-height: 500px; display: block;"
+                                controls preload="metadata"></video>
+                            {% else %}
+                            <img src="/{{ item.image_path }}" alt="Work"
+                                style="width: 100%; max-height: 600px; object-fit: contain; display: block; cursor: pointer;"
+                                onclick="window.open(this.src, '_blank')">
+                            {% endif %}
+                        </div>
+                        <div style="padding: 0 0.5rem;">
+                            <p
+                                style="font-size: 1.1rem; line-height: 1.6; color: var(--text-primary); margin-bottom: 0.8rem;">
+                                {{ item.caption or '' }}
+                            </p>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
+                                <i class="far fa-calendar-alt mr-1"></i> {{ item.created_at.strftime('%d %B %Y') }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="right-column">
+            <!-- Stats Card -->
+            <div class="card glass" style="padding: 2rem; margin-bottom: 2rem;">
+                <h4
+                    style="color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; margin-bottom: 2rem; font-weight: 700;">
+                    Performance Metrics</h4>
+
+                <div style="display: flex; flex-direction: column; gap: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div
+                            style="width: 50px; height: 50px; border-radius: 12px; background: rgba(251, 191, 36, 0.1); display: flex; align-items: center; justify-content: center; color: #fbbf24; font-size: 1.2rem;">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: #fbbf24;">{{ worker.avg_rating }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">AVERAGE RATING</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div
+                            style="width: 50px; height: 50px; border-radius: 12px; background: rgba(16, 185, 129, 0.1); display: flex; align-items: center; justify-content: center; color: #10b981; font-size: 1.2rem;">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">{{
+                                worker.total_jobs }}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">JOBS COMPLETED</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div
+                            style="width: 50px; height: 50px; border-radius: 12px; background: rgba(168, 85, 247, 0.1); display: flex; align-items: center; justify-content: center; color: #a855f7; font-size: 1.2rem;">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--accent-vibrant);">{{
+                                worker.experience_years }} Years</div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">EXPERIENCE</div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div
+                            style="width: 50px; height: 50px; border-radius: 12px; background: rgba(6, 182, 212, 0.1); display: flex; align-items: center; justify-content: center; color: #06b6d4; font-size: 1.2rem;">
+                            <i class="fas fa-tag"></i>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 800; color: #06b6d4;">₹{{ worker.daily_wage }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary);">DAILY WAGE</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Info -->
+            <div class="card glass" style="padding: 2rem;">
+                <h4
+                    style="color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px; font-size: 0.8rem; margin-bottom: 1.5rem; font-weight: 700;">
+                    Contact & Location</h4>
+                <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-primary);">
+                        <i class="fas fa-map-marker-alt" style="width: 20px; color: var(--primary-color);"></i>
+                        <span>{{ worker.city }}{% if worker.area %}, {{ worker.area }}{% endif %}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-primary);">
+                        <i class="fas fa-phone" style="width: 20px; color: var(--primary-color);"></i>
+                        <span>{{ worker.phone }}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; color: var(--text-primary);">
+                        <i class="fas fa-envelope" style="width: 20px; color: var(--primary-color);"></i>
+                        <span>{{ worker.email }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 4rem;">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline" style="padding: 1rem 3rem;">Back to Dashboard</a>
+    </div>
+</div>
+
+<style>
+    @media (max-width: 900px) {
+        div[style*="grid-template-columns: 1fr 350px"] {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+{% endblock %}
