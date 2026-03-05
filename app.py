@@ -463,3 +463,52 @@ def submit_review(booking_id):
         flash('Review submitted and job completed!', 'success')
         
     return redirect(url_for('dashboard'))
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+@app.route('/payment/<int:booking_id>', methods=['GET', 'POST'])
+@login_required
+def payment(booking_id):
+    booking = execute_query("SELECT b.*, j.title FROM bookings b JOIN jobs j ON b.job_id = j.job_id WHERE b.booking_id = %s", (booking_id,))
+    if not booking:
+        flash('Booking not found', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        # Mock payment processing
+        transaction_id = "TXN" + os.urandom(4).hex().upper()
+        execute_query(
+            "INSERT INTO payments (booking_id, amount, status, transaction_id) VALUES (%s, %s, %s, %s)",
+            (booking_id, 100.00, 'completed', transaction_id), # Mock amount
+            commit=True
+        )
+        flash(f'Payment successful! Transaction ID: {transaction_id}', 'success')
+        return redirect(url_for('dashboard'))
+        
+    return render_template('payment.html', booking=booking[0])
+
+@app.route('/admin/dashboard')
+@login_required
+def admin_dashboard():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+        
+    stats = {
+        'total_users': execute_query("SELECT COUNT(*) as c FROM users")[0]['c'],
+        'total_workers': execute_query("SELECT COUNT(*) as c FROM users WHERE role='worker'")[0]['c'],
+        'total_jobs': execute_query("SELECT COUNT(*) as c FROM jobs")[0]['c'],
+        'total_bookings': execute_query("SELECT COUNT(*) as c FROM bookings")[0]['c'],
+        'total_earnings': execute_query("SELECT SUM(amount) as s FROM payments WHERE status='completed'")[0]['s'] or 0
+    }
+    stats['total_earnings'] = round(float(stats['total_earnings']), 2)
+    
+    recent_users = execute_query(
+        "SELECT full_name, email, role, city, created_at FROM users ORDER BY created_at DESC LIMIT 5"
+    )
+    
+    return render_template('admin_dashboard.html', stats=stats, recent_users=recent_users)
