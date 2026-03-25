@@ -284,8 +284,14 @@ def post_job():
         location_area = request.form.get('location_area')
         job_date = request.form['job_date']
         duration_hours = request.form['duration_hours']
-        latitude = request.form.get('latitude')
-        longitude = request.form.get('longitude')
+        budget_str = request.form.get('budget', '').strip()
+        budget = float(budget_str) if budget_str else None
+        
+        lat_str = request.form.get('latitude', '').strip()
+        latitude = float(lat_str) if lat_str else None
+        
+        lng_str = request.form.get('longitude', '').strip()
+        longitude = float(lng_str) if lng_str else None
         
         execute_query(
             "INSERT INTO jobs (provider_id, title, skill_required, location_city, location_area, job_date, duration_hours, budget, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
@@ -463,3 +469,73 @@ def submit_review(booking_id):
         flash('Review submitted and job completed!', 'success')
         
     return redirect(url_for('dashboard'))
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+@app.route('/payment/<int:booking_id>', methods=['GET', 'POST'])
+@login_required
+def payment(booking_id):
+    booking = execute_query("SELECT b.*, j.title FROM bookings b JOIN jobs j ON b.job_id = j.job_id WHERE b.booking_id = %s", (booking_id,))
+    if not booking:
+        flash('Booking not found', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        # Mock payment processing
+        transaction_id = "TXN" + os.urandom(4).hex().upper()
+        execute_query(
+            "INSERT INTO payments (booking_id, amount, status, transaction_id) VALUES (%s, %s, %s, %s)",
+            (booking_id, 100.00, 'completed', transaction_id), # Mock amount
+            commit=True
+        )
+        flash(f'Payment successful! Transaction ID: {transaction_id}', 'success')
+        return redirect(url_for('dashboard'))
+        
+    return render_template('payment.html', booking=booking[0])
+
+@app.route('/admin/dashboard')
+@login_required
+def admin_dashboard():
+    if current_user.role != 'admin':
+        flash('Access denied', 'danger')
+        return redirect(url_for('dashboard'))
+        
+    stats = {
+        'total_users': execute_query("SELECT COUNT(*) as c FROM users")[0]['c'],
+        'total_workers': execute_query("SELECT COUNT(*) as c FROM users WHERE role='worker'")[0]['c'],
+        'total_jobs': execute_query("SELECT COUNT(*) as c FROM jobs")[0]['c'],
+        'total_bookings': execute_query("SELECT COUNT(*) as c FROM bookings")[0]['c'],
+        'total_earnings': execute_query("SELECT SUM(amount) as s FROM payments WHERE status='completed'")[0]['s'] or 0
+    }
+    stats['total_earnings'] = round(float(stats['total_earnings']), 2)
+    
+    recent_users = execute_query(
+        "SELECT full_name, email, role, city, created_at FROM users ORDER BY created_at DESC LIMIT 5"
+    )
+    
+    return render_template('admin_dashboard.html', stats=stats, recent_users=recent_users)
+
+@app.route('/notifications')
+@login_required
+def get_notifications():
+    notifications = execute_query(
+        "SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC", 
+        (current_user.id,)
+    )
+    # Mark as read
+    execute_query("UPDATE notifications SET is_read = TRUE WHERE user_id = %s", (current_user.id,), commit=True)
+    return render_template('notifications.html', notifications=notifications)
+
+if __name__ == '__main__':
+    with app.app_context():
+        try:
+            from ml_module import train_model
+            train_model()
+            print("ML DEBUG: Initial training completed.")
+        except Exception as e:
+            print(f"Initial ML training skipped: {e}")
+    app.run(debug=True)
