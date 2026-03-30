@@ -27,6 +27,17 @@ def inject_notification_count():
         return dict(unread_count=count[0]['c'] if count else 0)
     return dict(unread_count=0)
 
+@app.after_request
+def add_header(response):
+    """
+    Add headers to prevent caching of pages, ensuring that hitting the 
+    back button after logout does not display logged-in content.
+    """
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 # Initialize Database
 init_app(app)
 
@@ -379,9 +390,20 @@ def apply_job(job_id):
         flash('You have already applied for this job', 'warning')
         return redirect(url_for('dashboard'))
 
-    job = execute_query("SELECT provider_id, title FROM jobs WHERE job_id = %s", (job_id,))
+    job = execute_query("SELECT provider_id, title, job_date FROM jobs WHERE job_id = %s", (job_id,))
     if not job:
         flash('Job not found', 'danger')
+        return redirect(url_for('dashboard'))
+
+    # Check if worker is already booked for another job on the same date
+    job_date = job[0]['job_date']
+    already_booked = execute_query(
+        "SELECT b.booking_id FROM bookings b JOIN jobs j ON b.job_id = j.job_id "
+        "WHERE b.worker_id=%s AND j.job_date=%s AND b.status='confirmed'",
+        (current_user.id, job_date)
+    )
+    if already_booked:
+        flash('You are already booked for another job on this date', 'danger')
         return redirect(url_for('dashboard'))
 
     execute_query(
@@ -420,16 +442,32 @@ def accept_worker(booking_id):
         flash('Access denied', 'danger')
         return redirect(url_for('dashboard'))
     
-    booking = execute_query("SELECT job_id, worker_id FROM bookings WHERE booking_id = %s", (booking_id,))
+    booking = execute_query(
+        "SELECT b.job_id, b.worker_id, j.job_date FROM bookings b JOIN jobs j ON b.job_id = j.job_id WHERE b.booking_id = %s", 
+        (booking_id,)
+    )
     if booking:
+        worker_id = booking[0]['worker_id']
+        job_id = booking[0]['job_id']
+        job_date = booking[0]['job_date']
+
         # Accept this booking
         execute_query("UPDATE bookings SET status='confirmed' WHERE booking_id=%s", (booking_id,), commit=True)
         # Reject others for the same job
-        execute_query("UPDATE bookings SET status='cancelled' WHERE job_id=%s AND booking_id!=%s", (booking[0]['job_id'], booking_id), commit=True)
+        execute_query("UPDATE bookings SET status='cancelled' WHERE job_id=%s AND booking_id!=%s", (job_id, booking_id), commit=True)
         # Update job status
-        execute_query("UPDATE jobs SET status='booked' WHERE job_id=%s", (booking[0]['job_id'],), commit=True)
+        execute_query("UPDATE jobs SET status='booked' WHERE job_id=%s", (job_id,), commit=True)
         
-        create_notification(booking[0]['worker_id'], "Your booking request has been confirmed!")
+        # Prevent double-booking by cancelling worker's other pending requests on the same day
+        execute_query(
+            "UPDATE bookings b JOIN jobs j ON b.job_id = j.job_id "
+            "SET b.status='cancelled' "
+            "WHERE b.worker_id=%s AND j.job_date=%s AND b.booking_id!=%s AND b.status='pending'",
+            (worker_id, job_date, booking_id),
+            commit=True
+        )
+        
+        create_notification(worker_id, "Your booking request has been confirmed!")
         flash('Worker assigned to job!', 'success')
     return redirect(url_for('dashboard'))
 
